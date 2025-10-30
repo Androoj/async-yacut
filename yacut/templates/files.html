@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+  <main>
+    <section class="container my-5 px-4">
+      <!-- Логотип -->
+      <h1 class="text-center mb-4">
+        <span style="color:red">Ya</span>Cut
+      </h1>
+
+      <!-- Описание -->
+      <p class="text-center mb-4">
+        Загрузите файлы и получите на них короткие ссылки
+      </p>
+
+      <!-- Форма загрузки -->
+      <div class="row justify-content-center">
+        <div class="col-sm-6">
+          <form method="POST" novalidate enctype="multipart/form-data">
+            {{ form.csrf_token }}
+
+            <!-- Поле выбора файлов -->
+            <div class="input-group mb-3">
+              {{ form.files(
+                  class="form-control",
+                  id="file-input",
+                  onchange="updateFileName(this)"
+              ) }}
+            </div>
+            {{ form.submit(class="btn btn-primary") }}
+          </form>
+        </div>
+      </div>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="row justify-content-center mt-3">
+            <div class="col-sm-6">
+              <div class="alert alert-danger">
+                {% for message in messages %}
+                  <p class="mb-0">{{ message }}</p>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% if files_list %}
+        <div class="row justify-content-center mt-4">
+          <div class="col-sm-8">
+            <ul class="list-unstyled mb-0">
+              {% for item in files_list %}
+                <li class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 border-bottom">
+                  <span class="mb-2 mb-md-0">{{ item.filename }}</span>
+                  <a href="{{ item.short_link }}" target="_blank" rel="noopener">
+                    {{ item.short_link }}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% else %}
+        <div class="row justify-content-center mt-4">
+          <div class="col-sm-8 text-center text-muted">
+            <p>После загрузки файлов здесь появятся короткие ссылки.</p>
+          </div>
+        </div>
+      {% endif %}
+    </section>
+  </main>
+{% endblock content %}

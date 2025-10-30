@@ -1,0 +1,2 @@
+class ValidationLink(Exception):
+    pass
