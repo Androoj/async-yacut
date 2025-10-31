@@ -2,23 +2,16 @@
 {% block content %}
   <main>
     <section class="container my-5 px-4">
-      <!-- Логотип -->
       <h1 class="text-center mb-4">
         <span style="color:red">Ya</span>Cut
       </h1>
-
-      <!-- Описание -->
       <p class="text-center mb-4">
         Загрузите файлы и получите на них короткие ссылки
       </p>
-
-      <!-- Форма загрузки -->
       <div class="row justify-content-center">
         <div class="col-sm-6">
           <form method="POST" novalidate enctype="multipart/form-data">
             {{ form.csrf_token }}
-
-            <!-- Поле выбора файлов -->
             <div class="input-group mb-3">
               {{ form.files(
                   class="form-control",
@@ -46,16 +39,20 @@
       {% if files_list %}
         <div class="row justify-content-center mt-4">
           <div class="col-sm-8">
-            <ul class="list-unstyled mb-0">
-              {% for item in files_list %}
-                <li class="d-flex flex-column flex-md-row justify-content-between align-items-md-center py-2 border-bottom">
-                  <span class="mb-2 mb-md-0">{{ item.filename }}</span>
-                  <a href="{{ item.short_link }}" target="_blank" rel="noopener">
-                    {{ item.short_link }}
-                  </a>
-                </li>
-              {% endfor %}
-            </ul>
+            <table class="table table-borderless">
+              <tbody>
+                {% for item in files_list %}
+                  <tr>
+                    <td>{{ item.filename }}</td>
+                    <td>
+                      <a href="{{ item.short_link }}" target="_blank" rel="noopener">
+                        {{ item.short_link }}
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       {% else %}
@@ -67,4 +64,15 @@
       {% endif %}
     </section>
   </main>
+  <script>
+    function updateFileName(input) {
+      const fileNames = Array.from(input.files).map(f => f.name);
+      const label = document.querySelector('.input-group-text');
+      if (fileNames.length === 0) {
+        label.textContent = 'Выбрать файлы';
+      } else {
+        label.textContent = `${fileNames.length} файл${fileNames.length === 1 ? '' : 'а'}`;
+      }
+    }
+  </script>
 {% endblock content %}

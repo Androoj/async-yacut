@@ -1,10 +1,12 @@
-from flask import flash, render_template, redirect, url_for
+from flask import (
+    flash, render_template, redirect, url_for, send_from_directory
+)
 
 from yacut import app, db
 from .forms import URLMapForm, URLFileForm
 from .models import URLMap
 from .exceptions import ValidationLink
-from .yandex_disk import async_upload_files_to_ydisk
+from .yandex_disk import async_upload_files_to_disk
 
 
 @app.route('/', methods=('GET', 'POST'))
@@ -36,11 +38,11 @@ def redirect_view(short):
     )
 
 
-@app.route('/files', methods=['GET', 'POST'])
-async def cut_files_link():
+@app.route('/files', methods=('GET', 'POST'))
+async def files_link():
     form = URLFileForm()
     if form.validate_on_submit():
-        destinations = await async_upload_files_to_ydisk(form.files.data)
+        destinations = await async_upload_files_to_disk(form.files.data)
         links = []
         if destinations:
             for file_item in destinations:
@@ -53,8 +55,8 @@ async def cut_files_link():
                     {
                         'filename': file_item['filename'],
                         'short_link': url_for(
-                            'get_link_to_original',
-                            short_id=short_link,
+                            'redirect_view',
+                            short=short_link,
                             _external=True
                         )
                     }
@@ -68,3 +70,8 @@ async def cut_files_link():
             files_list=links
         )
     return render_template('files.html', form=form)
+
+
+@app.route('/api/openapi.yaml')
+def openapi_spec():
+    return send_from_directory('static', 'openapi.yml', mimetype='text/yaml')
