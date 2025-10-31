@@ -72,6 +72,6 @@ async def files_link():
     return render_template('files.html', form=form)
 
 
-@app.route('/api/openapi.yaml')
+@app.route('/api/docs')
 def openapi_spec():
     return send_from_directory('static', 'openapi.yml', mimetype='text/yaml')
