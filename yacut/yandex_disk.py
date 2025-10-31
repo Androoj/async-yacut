@@ -32,9 +32,9 @@ async def async_upload_files_to_disk(files):
 
 
 async def get_download_link(session, file_item, safe_filename):
-    file_path = f'app:/{uuid.uuid4().hex}_{
-        sanitize_filename(file_item.filename)
-    }'
+    file_path = (
+        f'app:/{uuid.uuid4().hex}_{sanitize_filename(file_item.filename)}'
+    )
 
     async with session.get(
         url=UPLOAD_URL,
