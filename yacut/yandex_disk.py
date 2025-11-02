@@ -69,9 +69,8 @@ async def get_download_link(session, file_item, safe_filename):
     ) as response:
         if response.status != HTTPStatus.OK:
             raise YandexDiskAPIError(
-                f'Не удалось получить ссылку для скачивания: {
-                    await response.json()
-                }'
+                f'Не удалось получить ссылку для скачивания: '
+                f'{await response.json()}'
             )
         download_link = (await response.json())['href']
 
