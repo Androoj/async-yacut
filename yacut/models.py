@@ -1,83 +1,73 @@
 from datetime import datetime, timezone
 import random
-import re
+
+from flask import url_for
 
 from yacut import db
 from .constants import (
-    MIN_LENGHT_ALL_LINK,
-    MAX_LENGHT_CUSTOM_LINK,
     ASCII_LETTERS_DIGITS,
-    MAX_LENGHT_RANDOM_LINK,
-    MAX_ATTEMPTS_GENERATION_LINK,
-    FORBIDDEN_LINK_NAME,
-    REGEX_PATTERN_LINK_NAME
+    MAX_LENGTH_LINK,
+    MAX_LENGTH_CUSTOM_SHORT,
+    MAX_LENGTH_RANDOM_SHORT,
+    MAX_ATTEMPTS_GENERATION_SHORT,
+    FORBIDDEN_SHORT_NAME,
+    REDIRECT_VIEW_NAME
 )
-from .exceptions import ValidationLink
+
+UNIQUE_SHORT_GENERATION_FAILED = (
+    'Не удалось сгенерировать уникальную короткую ссылку '
+    'после {attempts} попыток. Повторите попытку снова.'
+)
 
 
 class URLMap(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    original = db.Column(db.String, nullable=False)
+    original = db.Column(db.String(MAX_LENGTH_LINK), nullable=False)
     short = db.Column(
-        db.String(MAX_LENGHT_CUSTOM_LINK), unique=True, nullable=False
+        db.String(MAX_LENGTH_CUSTOM_SHORT), unique=True, nullable=False
     )
     timestamp = db.Column(
-        db.DateTime, index=True, default=datetime.now(timezone.utc)
+        db.DateTime, index=True, default=lambda: datetime.now(timezone.utc)
     )
 
-    def from_dict(self, data):
-        setattr(self, 'original', data['url'])
-        setattr(self, 'short', data['custom_id'])
-
-    def to_dict(self):
-        return {
-            'url': self.original,
-            'short': self.short
-        }
-
-    @staticmethod
-    def generate_short_link():
-        return ''.join(
-            random.choices(
-                ASCII_LETTERS_DIGITS,
-                k=MAX_LENGHT_RANDOM_LINK
-            )
-        )
+    def get_full_short_url(self):
+        return url_for(REDIRECT_VIEW_NAME, short=self.short, _external=True)
 
     @classmethod
-    def get_unique_short_id(cls):
-        for _ in range(MAX_ATTEMPTS_GENERATION_LINK):
-            short = cls.generate_short_link()
-            if not URLMap.get(short):
-                return short
-        raise ValidationLink(
-            'Не удалось сгенерировать уникальную короткую ссылку. '
-            'Повторите попытку снова.'
-        )
+    def get(cls, short):
+        return cls.query.filter_by(short=short).first()
 
-    @staticmethod
-    def get(short_link):
-        return URLMap.query.filter_by(short=short_link).first()
-
-    @staticmethod
-    def create(original_link, short_link=None):
-        if short_link:
-            if (
-                len(short_link) > MAX_LENGHT_CUSTOM_LINK
-                or len(short_link) < MIN_LENGHT_ALL_LINK
-                or short_link == FORBIDDEN_LINK_NAME
-                or not bool(re.match(REGEX_PATTERN_LINK_NAME, short_link))
-            ):
-                raise ValidationLink(
-                    'Указано недопустимое имя для короткой ссылки'
-                )
-            if URLMap.get(short_link):
-                raise ValidationLink(
-                    'Предложенный вариант короткой ссылки уже существует.'
-                )
-        else:
-            short_link = URLMap.get_unique_short_id()
-        object_model = URLMap(original=original_link, short=short_link)
-        db.session.add(object_model)
+    @classmethod
+    def create(cls, original, short=None):
+        if short is None:
+            short = cls.generate_unique_short()
+        obj = cls(original=original, short=short)
+        db.session.add(obj)
         db.session.commit()
-        return object_model
+        return obj
+
+    @classmethod
+    def create_batch(cls, items):
+        objects = []
+        for item in items:
+            obj = cls(original=item['original_link'], short=item['short'])
+            objects.append(obj)
+            db.session.add(obj)
+        db.session.commit()
+        return objects
+
+    @classmethod
+    def generate_unique_short(cls):
+        for attempt in range(1, MAX_ATTEMPTS_GENERATION_SHORT + 1):
+            candidate = ''.join(
+                random.choices(ASCII_LETTERS_DIGITS, k=MAX_LENGTH_RANDOM_SHORT)
+            )
+            if candidate == FORBIDDEN_SHORT_NAME:
+                continue
+            if not cls.get(candidate):
+                return candidate
+        raise RuntimeError(
+            UNIQUE_SHORT_GENERATION_FAILED.format(
+                attempts=MAX_ATTEMPTS_GENERATION_SHORT
+            )
+        )

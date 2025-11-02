@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,16 +11,26 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <title>{% block title %}YaCut - укоротитель ссылок{% endblock title %}</title>
 </head>
-
 <body>
-  {% include "header.html" %} 
+  {% include "header.html" %}
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="container mt-3">
+        <div class="row justify-content-center">
+          <div class="col-sm-6">
+            <div class="alert alert-danger">
+              {% for message in messages %}
+                <p class="mb-0">{{ message }}</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endwith %}
+
   {% block content %}{% endblock content %}
   {% include "footer.html" %}
 </body>
-
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-  integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
-  integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-
 </html>

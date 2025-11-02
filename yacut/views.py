@@ -1,75 +1,78 @@
+from http import HTTPStatus
 from flask import (
-    flash, render_template, redirect, url_for, send_from_directory
+    abort, flash, render_template, redirect, send_from_directory
 )
 
-from yacut import app, db
+from yacut import app
+from .exceptions import YandexDiskAPIError
 from .forms import URLMapForm, URLFileForm
 from .models import URLMap
-from .exceptions import ValidationLink
 from .yandex_disk import async_upload_files_to_disk
 
 
 @app.route('/', methods=('GET', 'POST'))
 def index_view():
     form = URLMapForm()
-    if form.validate_on_submit():
-        custom_id = form.custom_id.data
-        try:
-            link = URLMap.create(
-                original_link=form.original_link.data,
-                short_link=custom_id
-            )
-        except ValidationLink as error:
-            flash(str(error))
-            return render_template('main.html', form=form)
+    if not form.validate_on_submit():
+        return render_template('main.html', form=form)
 
-        short_url = url_for(
-            'redirect_view', short=link.short, _external=True
-        )
-        return render_template('main.html', form=form, link=short_url)
+    short = form.custom_id.data or None
 
-    return render_template('main.html', form=form)
+    try:
+        obj = URLMap.create(original=form.original_link.data, short=short)
+        short_url = obj.get_full_short_url()
+    except RuntimeError as e:
+        flash(str(e))
+        return render_template('main.html', form=form)
+
+    return render_template('main.html', form=form, link=short_url)
 
 
 @app.route('/<string:short>', methods=('GET',))
 def redirect_view(short):
-    return redirect(
-        URLMap.query.filter_by(short=short).first_or_404().original
-    )
+    url_map = URLMap.get(short)
+    if url_map is None:
+        abort(HTTPStatus.NOT_FOUND)
+    return redirect(url_map.original)
 
 
 @app.route('/files', methods=('GET', 'POST'))
 async def files_link():
     form = URLFileForm()
-    if form.validate_on_submit():
-        destinations = await async_upload_files_to_disk(form.files.data)
-        links = []
-        if destinations:
-            for file_item in destinations:
-                short_link = URLMap.get_unique_short_id()
-                new_item = URLMap(
-                    original=file_item['original_link'],
-                    short=short_link
-                )
-                links.append(
-                    {
-                        'filename': file_item['filename'],
-                        'short_link': url_for(
-                            'redirect_view',
-                            short=short_link,
-                            _external=True
-                        )
-                    }
-                )
-                db.session.add(new_item)
-            db.session.commit()
+    if not form.validate_on_submit():
+        return render_template('files.html', form=form)
 
-        return render_template(
-            'files.html',
-            form=form,
-            files_list=links
-        )
-    return render_template('files.html', form=form)
+    try:
+        destinations = await async_upload_files_to_disk(form.files.data)
+    except YandexDiskAPIError as e:
+        flash(str(e))
+        return render_template('files.html', form=form)
+
+    try:
+        file_items = [
+            {
+                'original_link': item['original_link'],
+                'short': URLMap.generate_unique_short()
+            }
+            for item in destinations
+        ]
+        URLMap.create_batch(file_items)
+
+        files_list = [
+            {
+                'filename': item['filename'],
+                'short_link': URLMap(
+                    original=item['original_link'],
+                    short=file_items[i]['short']
+                ).get_full_short_url()
+            }
+            for i, item in enumerate(destinations)
+        ]
+    except RuntimeError:
+        flash('Не удалось сгенерировать уникальные короткие ссылки.')
+        return render_template('files.html', form=form)
+
+    return render_template('files.html', form=form, files_list=files_list)
 
 
 @app.route('/api/docs')

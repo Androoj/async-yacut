@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "index.html" %}
 {% block content %}
   <main>
     <section class="container my-5 px-4">
@@ -23,19 +23,7 @@
           </form>
         </div>
       </div>
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
-          <div class="row justify-content-center mt-3">
-            <div class="col-sm-6">
-              <div class="alert alert-danger">
-                {% for message in messages %}
-                  <p class="mb-0">{{ message }}</p>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        {% endif %}
-      {% endwith %}
+
       {% if files_list %}
         <div class="row justify-content-center mt-4">
           <div class="col-sm-8">

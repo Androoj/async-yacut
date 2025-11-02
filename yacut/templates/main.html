@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "index.html" %}
 {% block content %}
   <main>
     <section class="container my-5 px-4">
@@ -9,41 +9,30 @@
 
       <div class="container">
         <div class="row my-3">
-          <div class="col-sm">
-          </div>
+          <div class="col-sm"></div>
           <div class="col-sm">
             <form method="POST" novalidate>
               {{ form.csrf_token }}
               {{ form.original_link(class="form-control form-control-lg py-3 mb-3", id="form-title", placeholder=form.original_link.label.text) }}
-              <p>
-                {% if form.original_link.errors %}
-                  {% for error in form.original_link.errors %}
-                    <span style="color: red">{{ error }}</span>
-                  {% endfor %}
-                {% endif %}
-              </p>
-              <p>
-                {{ form.custom_id(class="form-control form-control-lg py-3 mb-3", id="form-link", placeholder=form.custom_id.label.text) }}
-              </p>
-              <p>
-                {% if form.custom_id.errors %}
-                  {% for error in form.custom_id.errors %}
-                    <span style="color: red">{{ error }}</span>
-                  {% endfor %}
-                {% endif %}
-              </p>
+              {% for error in form.original_link.errors %}
+                <p><span style="color: red">{{ error }}</span></p>
+              {% endfor %}
+
+              {{ form.custom_id(class="form-control form-control-lg py-3 mb-3", id="form-link", placeholder=form.custom_id.label.text) }}
+              {% for error in form.custom_id.errors %}
+                <p><span style="color: red">{{ error }}</span></p>
+              {% endfor %}
+
               {{ form.submit(class="btn btn-primary") }}
             </form>
           </div>
-          <div class="col-sm">
-          </div>
+          <div class="col-sm"></div>
         </div>
       </div>
 
       <div class="container">
         <div class="row">
-          <div class="col-sm">
-          </div>
+          <div class="col-sm"></div>
           <div class="col-sm">
             {% if link %}
               <h5 class="text-center">Ваша новая ссылка готова:</h5>
@@ -52,17 +41,9 @@
               </p>
             {% endif %}
           </div>
-          <div class="col-sm">
-            {% with messages = get_flashed_messages() %}
-              {% for message in messages %}
-                <h5 class="text-center">Найденная ошибка</h5>
-                <p class="text-center">{{ message }}</p>
-              {% endfor %}
-            {% endwith %}
-          </div>
+          <div class="col-sm"></div>
         </div>
       </div>
-
     </section>
   </main>
 {% endblock content %}

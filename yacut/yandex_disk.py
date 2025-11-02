@@ -6,10 +6,11 @@ from http import HTTPStatus
 import aiohttp
 
 from yacut import app
+from .exceptions import YandexDiskAPIError
 
-AUTH_HEADER = {'Authorization': f'OAuth {app.config["DISK_TOKEN"]}'}
+AUTH_HEADER = {'Authorization': f'OAuth {app.config['DISK_TOKEN']}'}
 YADISK_API_BASE = (
-    f'{app.config["DISK_API_HOST"]}{app.config["DISK_API_VERSION"]}'
+    f'{app.config['DISK_API_HOST']}{app.config['DISK_API_VERSION']}'
 )
 UPLOAD_URL = f'{YADISK_API_BASE}/disk/resources/upload'
 DOWNLOAD_URL = f'{YADISK_API_BASE}/disk/resources/download'
@@ -24,15 +25,16 @@ async def async_upload_files_to_disk(files):
         return []
     tasks = []
     async with aiohttp.ClientSession() as session:
-        for file_item in files:
-            safe_base = sanitize_filename(file_item.filename)
-            unique_name = f'{uuid.uuid4().hex}_{safe_base}'
-            tasks.append(get_download_link(session, file_item, unique_name))
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                print(f'Ошибка при загрузке файла {i}: {result}')
-        return [r for r in results if not isinstance(r, Exception)]
+        tasks = [
+            get_download_link(
+                session,
+                file_item,
+                f'{uuid.uuid4().hex}_{sanitize_filename(file_item.filename)}'
+            )
+            for file_item in files
+        ]
+        results = await asyncio.gather(*tasks)
+        return results
 
 
 async def get_download_link(session, file_item, safe_filename):
@@ -44,22 +46,19 @@ async def get_download_link(session, file_item, safe_filename):
         params={'path': disk_path, 'overwrite': 'true'}
     ) as response:
         if response.status != HTTPStatus.OK:
-            error = await response.json()
-            raise Exception(f'Не удалось получить upload URL: {error}')
-        data = await response.json()
-        upload_url = data['href']
+            raise YandexDiskAPIError(
+                f'Не удалось получить upload URL: {await response.json()}'
+            )
+        upload_url = (await response.json())['href']
 
     await asyncio.to_thread(file_item.seek, 0)
     filecontent = await asyncio.to_thread(file_item.read)
 
-    async with session.put(
-        url=upload_url,
-        data=filecontent
-    ) as response:
+    async with session.put(upload_url, data=filecontent) as response:
         if response.status not in (
             HTTPStatus.OK, HTTPStatus.CREATED, HTTPStatus.ACCEPTED
         ):
-            raise Exception(
+            raise YandexDiskAPIError(
                 f'Не удалось загрузить файл: статус {response.status}'
             )
 
@@ -69,12 +68,12 @@ async def get_download_link(session, file_item, safe_filename):
         params={'path': disk_path}
     ) as response:
         if response.status != HTTPStatus.OK:
-            error = await response.json()
-            raise Exception(
-                f'Не удалось получить ссылку для скачивания: {error}'
+            raise YandexDiskAPIError(
+                f'Не удалось получить ссылку для скачивания: {
+                    await response.json()
+                }'
             )
-        data = await response.json()
-        download_link = data['href']
+        download_link = (await response.json())['href']
 
     return {
         'filename': file_item.filename,
