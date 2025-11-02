@@ -8,9 +8,9 @@ import aiohttp
 from yacut import app
 from .exceptions import YandexDiskAPIError
 
-AUTH_HEADER = {'Authorization': f'OAuth {app.config['DISK_TOKEN']}'}
+AUTH_HEADER = {'Authorization': f'OAuth {app.config["DISK_TOKEN"]}'}
 YADISK_API_BASE = (
-    f'{app.config['DISK_API_HOST']}{app.config['DISK_API_VERSION']}'
+    f'{app.config["DISK_API_HOST"]}{app.config["DISK_API_VERSION"]}'
 )
 UPLOAD_URL = f'{YADISK_API_BASE}/disk/resources/upload'
 DOWNLOAD_URL = f'{YADISK_API_BASE}/disk/resources/download'
