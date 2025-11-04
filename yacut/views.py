@@ -1,4 +1,5 @@
 from http import HTTPStatus
+
 from flask import (
     abort, flash, render_template, redirect, send_from_directory
 )
@@ -9,29 +10,33 @@ from .forms import URLMapForm, URLFileForm
 from .models import URLMap
 from .yandex_disk import async_upload_files_to_disk
 
+FILES_SHORT_GENERATION_FAILED = (
+    'Не удалось сгенерировать уникальные короткие ссылки.'
+)
+
 
 @app.route('/', methods=('GET', 'POST'))
 def index_view():
     form = URLMapForm()
     if not form.validate_on_submit():
-        return render_template('main.html', form=form)
-
-    short = form.custom_id.data or None
+        return render_template('index.html', form=form)
 
     try:
-        obj = URLMap.create(original=form.original_link.data, short=short)
-        short_url = obj.get_full_short_url()
-    except RuntimeError as e:
+        url_map = URLMap.create(
+            original=form.original_link.data,
+            short=form.custom_id.data or None
+        )
+        short_url = url_map.get_full_short_url()
+    except (ValueError, RuntimeError) as e:
         flash(str(e))
-        return render_template('main.html', form=form)
+        return render_template('index.html', form=form)
 
-    return render_template('main.html', form=form, link=short_url)
+    return render_template('index.html', form=form, link=short_url)
 
 
 @app.route('/<string:short>', methods=('GET',))
 def redirect_view(short):
-    url_map = URLMap.get(short)
-    if url_map is None:
+    if (url_map := URLMap.get(short)) is None:
         abort(HTTPStatus.NOT_FOUND)
     return redirect(url_map.original)
 
@@ -49,27 +54,15 @@ async def files_link():
         return render_template('files.html', form=form)
 
     try:
-        file_items = [
-            {
-                'original_link': item['original_link'],
-                'short': URLMap.generate_unique_short()
-            }
-            for item in destinations
-        ]
-        URLMap.create_batch(file_items)
-
-        files_list = [
-            {
+        files_list = []
+        for item in destinations:
+            url_map = URLMap.create(original=item['original_link'], short=None)
+            files_list.append({
                 'filename': item['filename'],
-                'short_link': URLMap(
-                    original=item['original_link'],
-                    short=file_items[i]['short']
-                ).get_full_short_url()
-            }
-            for i, item in enumerate(destinations)
-        ]
+                'short_link': url_map.get_full_short_url()
+            })
     except RuntimeError:
-        flash('Не удалось сгенерировать уникальные короткие ссылки.')
+        flash(FILES_SHORT_GENERATION_FAILED)
         return render_template('files.html', form=form)
 
     return render_template('files.html', form=form, files_list=files_list)

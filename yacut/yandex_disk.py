@@ -1,5 +1,4 @@
 import asyncio
-import re
 import uuid
 from http import HTTPStatus
 
@@ -15,26 +14,20 @@ YADISK_API_BASE = (
 UPLOAD_URL = f'{YADISK_API_BASE}/disk/resources/upload'
 DOWNLOAD_URL = f'{YADISK_API_BASE}/disk/resources/download'
 
-
-def sanitize_filename(filename):
-    return re.sub(r'[<>:"/\\|?*]', '_', filename)
+ERROR_UPLOAD_URL_FAILED = 'Не удалось получить upload URL: '
+ERROR_FILE_UPLOAD_FAILED = 'Не удалось загрузить файл: статус '
+ERROR_DOWNLOAD_LINK_FAILED = 'Не удалось получить ссылку для скачивания: '
 
 
 async def async_upload_files_to_disk(files):
-    if not files:
-        return []
-    tasks = []
     async with aiohttp.ClientSession() as session:
-        tasks = [
-            get_download_link(
-                session,
-                file_item,
-                f'{uuid.uuid4().hex}_{sanitize_filename(file_item.filename)}'
-            )
-            for file_item in files
-        ]
-        results = await asyncio.gather(*tasks)
-        return results
+        return await asyncio.gather(
+            *[
+                get_download_link(
+                    session, file_item, f'{uuid.uuid4().hex}'
+                ) for file_item in files
+            ]
+        )
 
 
 async def get_download_link(session, file_item, safe_filename):
@@ -47,7 +40,7 @@ async def get_download_link(session, file_item, safe_filename):
     ) as response:
         if response.status != HTTPStatus.OK:
             raise YandexDiskAPIError(
-                f'Не удалось получить upload URL: {await response.json()}'
+                ERROR_UPLOAD_URL_FAILED + await response.text()
             )
         upload_url = (await response.json())['href']
 
@@ -59,7 +52,7 @@ async def get_download_link(session, file_item, safe_filename):
             HTTPStatus.OK, HTTPStatus.CREATED, HTTPStatus.ACCEPTED
         ):
             raise YandexDiskAPIError(
-                f'Не удалось загрузить файл: статус {response.status}'
+                ERROR_FILE_UPLOAD_FAILED + str(response.status)
             )
 
     async with session.get(
@@ -69,8 +62,7 @@ async def get_download_link(session, file_item, safe_filename):
     ) as response:
         if response.status != HTTPStatus.OK:
             raise YandexDiskAPIError(
-                f'Не удалось получить ссылку для скачивания: '
-                f'{await response.json()}'
+                ERROR_DOWNLOAD_LINK_FAILED + await response.text()
             )
         download_link = (await response.json())['href']
 

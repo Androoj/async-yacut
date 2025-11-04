@@ -11,46 +11,49 @@ from wtforms.validators import (
 
 from .constants import (
     MAX_LENGTH_LINK,
-    MAX_LENGTH_CUSTOM_SHORT,
-    REGEX_PATTERN_SHORT_NAME,
+    MAX_LENGTH_SHORT,
+    REGEX_PATTERN_SHORT,
     FORBIDDEN_SHORT_NAME
 )
 from .models import URLMap
 
-ORIGINAL_LINK_TOO_LONG = 'Ссылка не должна превышать 2048 символов.'
+LABEL_ORIGINAL_LINK = 'Оригинальная ссылка'
+LABEL_SHORT = 'Ваш вариант короткой ссылки'
+ORIGINAL_LINK_TOO_LONG = (
+    f'Ссылка не должна превышать {MAX_LENGTH_LINK} символов.'
+)
 ORIGINAL_LINK_REQUIRED = 'Обязательное поле'
-CUSTOM_ID_INVALID_CHARS = (
+SHORT_INVALID_CHARS = (
     'Допустимы символы латинского алфавита и цифры от 0 до 9.'
 )
-CUSTOM_ID_UNAVAILABLE = 'Предложенный вариант короткой ссылки уже существует.'
+SHORT_UNAVAILABLE = 'Предложенный вариант короткой ссылки уже существует.'
 SUBMIT_BUTTON_TEXT = 'Создать'
 UPLOAD_BUTTON_TEXT = 'Загрузить'
 
 
 class URLMapForm(FlaskForm):
     original_link = URLField(
-        'Оригинальная ссылка',
+        LABEL_ORIGINAL_LINK,
         validators=(
             DataRequired(message=ORIGINAL_LINK_REQUIRED),
             Length(max=MAX_LENGTH_LINK, message=ORIGINAL_LINK_TOO_LONG),
         )
     )
     custom_id = StringField(
-        'Ваш вариант короткой ссылки',
+        LABEL_SHORT,
         validators=(
             Optional(),
-            Length(min=1, max=MAX_LENGTH_CUSTOM_SHORT),
-            Regexp(
-                REGEX_PATTERN_SHORT_NAME,
-                message=CUSTOM_ID_INVALID_CHARS
-            )
+            Length(max=MAX_LENGTH_SHORT),
+            Regexp(REGEX_PATTERN_SHORT, message=SHORT_INVALID_CHARS)
         )
     )
     submit = SubmitField(SUBMIT_BUTTON_TEXT)
 
     def validate_custom_id(self, field):
-        if field.data == FORBIDDEN_SHORT_NAME or URLMap.get(field.data):
-            raise ValidationError(CUSTOM_ID_UNAVAILABLE)
+        if field.data in FORBIDDEN_SHORT_NAME:
+            raise ValidationError(SHORT_UNAVAILABLE)
+        if URLMap.get(field.data) is not None:
+            raise ValidationError(SHORT_UNAVAILABLE)
 
 
 class URLFileForm(FlaskForm):
