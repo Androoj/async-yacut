@@ -5,13 +5,15 @@ from flask import (
 )
 
 from yacut import app
+from .constants import MAX_ATTEMPTS_GENERATION_SHORT
 from .exceptions import YandexDiskAPIError
 from .forms import URLMapForm, URLFileForm
 from .models import URLMap
 from .yandex_disk import async_upload_files_to_disk
 
 FILES_SHORT_GENERATION_FAILED = (
-    'Не удалось сгенерировать уникальные короткие ссылки.'
+    f'Не удалось сгенерировать уникальные короткие ссылки '
+    f'после {MAX_ATTEMPTS_GENERATION_SHORT} попыток.'
 )
 
 
@@ -26,12 +28,13 @@ def index_view():
             original=form.original_link.data,
             short=form.custom_id.data or None
         )
-        short_url = url_map.get_full_short_url()
     except (ValueError, RuntimeError) as e:
         flash(str(e))
         return render_template('index.html', form=form)
 
-    return render_template('index.html', form=form, link=short_url)
+    return render_template(
+        'index.html', form=form, link=url_map.get_full_short_url()
+    )
 
 
 @app.route('/<string:short>', methods=('GET',))
@@ -54,14 +57,16 @@ async def files_link():
         return render_template('files.html', form=form)
 
     try:
-        files_list = []
-        for item in destinations:
-            url_map = URLMap.create(original=item['original_link'], short=None)
-            files_list.append({
+        files_list = [
+            {
                 'filename': item['filename'],
-                'short_link': url_map.get_full_short_url()
-            })
-    except RuntimeError:
+                'short_link': URLMap.create(
+                    original=item['original_link']
+                ).get_full_short_url()
+            }
+            for item in destinations
+        ]
+    except (ValueError, RuntimeError):
         flash(FILES_SHORT_GENERATION_FAILED)
         return render_template('files.html', form=form)
 

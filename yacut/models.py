@@ -6,7 +6,7 @@ from flask import url_for
 
 from yacut import db
 from .constants import (
-    LETTERS_DIGITS,
+    SHORT_CODE_ALPHABET,
     MAX_LENGTH_LINK,
     MAX_LENGTH_SHORT,
     MAX_LENGTH_SHORT_AUTO,
@@ -16,26 +16,12 @@ from .constants import (
     REDIRECT_VIEW_NAME
 )
 
-ERROR_ORIGINAL_EMPTY = 'Укажите оригинальную ссылку.'
-ERROR_ORIGINAL_TOO_LONG = (
-    f'Слишком длинная ссылка. Максимальная длина — '
-    f'{MAX_LENGTH_LINK} символов.'
-)
-ERROR_SHORT_EMPTY = 'Укажите короткий идентификатор.'
-ERROR_SHORT_TOO_LONG = (
-    f'Слишком длинный идентификатор. Максимальная длина — '
-    f'{MAX_LENGTH_SHORT} символов.'
-)
-ERROR_SHORT_FORBIDDEN = 'Указанное имя запрещено.'
-ERROR_SHORT_INVALID_CHARS = (
-    'Идентификатор может содержать только латинские буквы и цифры.'
-)
-ERROR_SHORT_NOT_UNIQUE = 'Идентификатор уже занят.'
-
 UNIQUE_SHORT_GENERATION_FAILED = (
     f'Не удалось сгенерировать уникальную короткую ссылку '
     f'после {MAX_ATTEMPTS_GENERATION_SHORT} попыток. Повторите попытку снова.'
 )
+INVALID_SHORT = 'Указано недопустимое имя для короткой ссылки'
+SHORT_EXISTS = 'Предложенный вариант короткой ссылки уже существует.'
 
 
 class URLMap(db.Model):
@@ -54,25 +40,30 @@ class URLMap(db.Model):
         return URLMap.query.filter_by(short=short).first()
 
     @staticmethod
+    def validate_short(short):
+        if not short:
+            raise ValueError(INVALID_SHORT)
+
+        if len(short) > MAX_LENGTH_SHORT:
+            raise ValueError(INVALID_SHORT)
+
+        if short in FORBIDDEN_SHORT_NAME:
+            raise ValueError(INVALID_SHORT)
+
+        if not re.fullmatch(REGEX_PATTERN_SHORT, short):
+            raise ValueError(INVALID_SHORT)
+
+        if URLMap.get(short) is not None:
+            raise ValueError(SHORT_EXISTS)
+
+    @staticmethod
     def create(original, short=None):
-        if not original:
-            raise ValueError(ERROR_ORIGINAL_EMPTY)
-        if len(original) > MAX_LENGTH_LINK:
-            raise ValueError(ERROR_ORIGINAL_TOO_LONG)
+        if short == "":
+            short = None
 
         if short is not None:
-            if not short:
-                raise ValueError(ERROR_SHORT_EMPTY)
-            if len(short) > MAX_LENGTH_SHORT:
-                raise ValueError(ERROR_SHORT_TOO_LONG)
-            if short in FORBIDDEN_SHORT_NAME:
-                raise ValueError(ERROR_SHORT_FORBIDDEN)
-            if not re.fullmatch(REGEX_PATTERN_SHORT, short):
-                raise ValueError(ERROR_SHORT_INVALID_CHARS)
-            if URLMap.get(short) is not None:
-                raise ValueError(ERROR_SHORT_NOT_UNIQUE)
-
-        if short is None:
+            URLMap.validate_short(short)
+        else:
             short = URLMap.generate_unique_short()
 
         url_map = URLMap(original=original, short=short)
@@ -85,7 +76,7 @@ class URLMap(db.Model):
         pattern = re.compile(REGEX_PATTERN_SHORT)
         for _ in range(MAX_ATTEMPTS_GENERATION_SHORT):
             short = ''.join(
-                random.choices(LETTERS_DIGITS, k=MAX_LENGTH_SHORT_AUTO)
+                random.choices(SHORT_CODE_ALPHABET, k=MAX_LENGTH_SHORT_AUTO)
             )
             if short in FORBIDDEN_SHORT_NAME or not pattern.fullmatch(short):
                 continue

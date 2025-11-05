@@ -50,9 +50,11 @@ class URLMapForm(FlaskForm):
     submit = SubmitField(SUBMIT_BUTTON_TEXT)
 
     def validate_custom_id(self, field):
-        if field.data in FORBIDDEN_SHORT_NAME:
-            raise ValidationError(SHORT_UNAVAILABLE)
-        if URLMap.get(field.data) is not None:
+        if not field.data:
+            return
+
+        if (field.data in FORBIDDEN_SHORT_NAME
+                or URLMap.get(field.data) is not None):
             raise ValidationError(SHORT_UNAVAILABLE)
 
 
