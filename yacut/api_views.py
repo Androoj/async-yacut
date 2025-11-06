@@ -22,16 +22,14 @@ def create_new_short():
         raise InvalidAPIUsage(URL_REQUIRED, HTTPStatus.BAD_REQUEST)
 
     try:
-        url_map = URLMap.create(
-            original=data['url'], short=data.get('custom_id')
-        )
-    except ValueError as e:
+        return jsonify({
+            'url': data['url'],
+            'short_link': URLMap.create(
+                original=data['url'], short=data.get('custom_id') or None
+            ).get_full_short_url()
+        }), HTTPStatus.CREATED
+    except (ValueError, RuntimeError) as e:
         raise InvalidAPIUsage(str(e))
-
-    return jsonify({
-        'url': data['url'],
-        'short_link': url_map.get_full_short_url()
-    }), HTTPStatus.CREATED
 
 
 @app.route('/api/id/<string:short>/', methods=('GET',))

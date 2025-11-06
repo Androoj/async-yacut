@@ -13,7 +13,7 @@ from .constants import (
     MAX_LENGTH_LINK,
     MAX_LENGTH_SHORT,
     REGEX_PATTERN_SHORT,
-    FORBIDDEN_SHORT_NAME
+    FORBIDDEN_SHORT_NAMES
 )
 from .models import URLMap
 
@@ -45,7 +45,8 @@ class URLMapForm(FlaskForm):
             Optional(),
             Length(max=MAX_LENGTH_SHORT),
             Regexp(REGEX_PATTERN_SHORT, message=SHORT_INVALID_CHARS)
-        )
+        ),
+        filters=[lambda x: x or None]
     )
     submit = SubmitField(SUBMIT_BUTTON_TEXT)
 
@@ -53,7 +54,7 @@ class URLMapForm(FlaskForm):
         if not field.data:
             return
 
-        if (field.data in FORBIDDEN_SHORT_NAME
+        if (field.data in FORBIDDEN_SHORT_NAMES
                 or URLMap.get(field.data) is not None):
             raise ValidationError(SHORT_UNAVAILABLE)
 

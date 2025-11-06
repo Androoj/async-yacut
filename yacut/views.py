@@ -24,17 +24,17 @@ def index_view():
         return render_template('index.html', form=form)
 
     try:
-        url_map = URLMap.create(
-            original=form.original_link.data,
-            short=form.custom_id.data or None
+        return render_template(
+            'index.html',
+            form=form,
+            link=URLMap.create(
+                original=form.original_link.data,
+                short=form.custom_id.data
+            ).get_full_short_url()
         )
     except (ValueError, RuntimeError) as e:
         flash(str(e))
         return render_template('index.html', form=form)
-
-    return render_template(
-        'index.html', form=form, link=url_map.get_full_short_url()
-    )
 
 
 @app.route('/<string:short>', methods=('GET',))
@@ -57,20 +57,22 @@ async def files_link():
         return render_template('files.html', form=form)
 
     try:
-        files_list = [
-            {
-                'filename': item['filename'],
-                'short_link': URLMap.create(
-                    original=item['original_link']
-                ).get_full_short_url()
-            }
-            for item in destinations
-        ]
+        return render_template(
+            'files.html',
+            form=form,
+            files_list=[
+                {
+                    'filename': item['filename'],
+                    'short_link': URLMap.create(
+                        original=item['original_link']
+                    ).get_full_short_url()
+                }
+                for item in destinations
+            ]
+        )
     except (ValueError, RuntimeError):
         flash(FILES_SHORT_GENERATION_FAILED)
         return render_template('files.html', form=form)
-
-    return render_template('files.html', form=form, files_list=files_list)
 
 
 @app.route('/api/docs')
