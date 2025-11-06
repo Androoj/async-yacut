@@ -62,12 +62,10 @@ async def files_link():
             form=form,
             files_list=[
                 {
-                    'filename': item['filename'],
-                    'short_link': URLMap.create(
-                        original=item['original_link']
-                    ).get_full_short_url()
+                    'filename': file.filename,
+                    'short_link': URLMap.create(original=original_link).get_full_short_url()
                 }
-                for item in destinations
+                for file, original_link in zip(form.files.data, destinations)
             ]
         )
     except (ValueError, RuntimeError):

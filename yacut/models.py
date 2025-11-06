@@ -1,4 +1,3 @@
-import re
 from datetime import datetime, timezone
 import random
 
@@ -6,14 +5,12 @@ from flask import url_for
 
 from yacut import db
 from .constants import (
-    ALLOWED_SHORT_CODE_CHARS,
-    FORBIDDEN_SHORT_NAMES,
+    ALLOWED_SHORT_CHARS,
     MAX_LENGTH_LINK,
     MAX_LENGTH_SHORT,
     MAX_LENGTH_SHORT_AUTO,
     MAX_ATTEMPTS_GENERATION_SHORT,
-    REDIRECT_VIEW_NAME,
-    REGEX_PATTERN_SHORT
+    REDIRECT_VIEW_NAME
 )
 
 UNIQUE_SHORT_GENERATION_FAILED = (
@@ -44,20 +41,7 @@ class URLMap(db.Model):
 
     @staticmethod
     def create(original, short=None):
-        if len(original) > MAX_LENGTH_LINK:
-            raise ValueError(ORIGINAL_LINK_TOO_LONG)
-
-        if short is not None:
-            if len(short) > MAX_LENGTH_SHORT:
-                raise ValueError(INVALID_SHORT)
-            if short in FORBIDDEN_SHORT_NAMES:
-                raise ValueError(INVALID_SHORT)
-            if not re.fullmatch(REGEX_PATTERN_SHORT, short):
-                raise ValueError(INVALID_SHORT)
-            if URLMap.get(short) is not None:
-                raise ValueError(SHORT_EXISTS)
-
-        else:
+        if short is None:
             short = URLMap.generate_unique_short()
 
         url_map = URLMap(original=original, short=short)
@@ -70,9 +54,9 @@ class URLMap(db.Model):
         for _ in range(MAX_ATTEMPTS_GENERATION_SHORT):
             short = ''.join(
                 random.choices(
-                    ALLOWED_SHORT_CODE_CHARS, k=MAX_LENGTH_SHORT_AUTO
+                    ALLOWED_SHORT_CHARS, k=MAX_LENGTH_SHORT_AUTO
                 )
             )
-            if URLMap.get(short) is None:
+            if not URLMap.get(short):
                 return short
         raise RuntimeError(UNIQUE_SHORT_GENERATION_FAILED)
