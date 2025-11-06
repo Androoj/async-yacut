@@ -63,7 +63,8 @@ async def files_link():
             files_list=[
                 {
                     'filename': file.filename,
-                    'short_link': URLMap.create(original=original_link).get_full_short_url()
+                    'short_link': URLMap.create(
+                        original=original_link).get_full_short_url()
                 }
                 for file, original_link in zip(form.files.data, destinations)
             ]
