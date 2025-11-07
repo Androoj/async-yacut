@@ -35,5 +35,5 @@ def create_new_short():
 @app.route('/api/id/<string:short>/', methods=('GET',))
 def get_original_url(short):
     if not (url_map := URLMap.get(short)):
-        raise InvalidAPIUsage('Указанный id не найден', HTTPStatus.NOT_FOUND)
+        raise InvalidAPIUsage(SHORT_NOT_FOUND, HTTPStatus.NOT_FOUND)
     return jsonify({'url': url_map.original}), HTTPStatus.OK

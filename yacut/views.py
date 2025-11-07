@@ -29,7 +29,8 @@ def index_view():
             form=form,
             link=URLMap.create(
                 original=form.original_link.data,
-                short=form.custom_id.data
+                short=form.custom_id.data,
+                validate=False
             ).get_full_short_url()
         )
     except (ValueError, RuntimeError) as e:

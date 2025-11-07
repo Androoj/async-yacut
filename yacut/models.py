@@ -43,18 +43,21 @@ class URLMap(db.Model):
         return URLMap.query.filter_by(short=short).first()
 
     @staticmethod
-    def create(original, short=None):
-        if short:
-            if (
-                len(short) > MAX_LENGTH_SHORT
-                or short in FORBIDDEN_SHORT_NAMES
-                or not re.fullmatch(REGEX_PATTERN_SHORT, short)
-            ):
-                raise ValueError(INVALID_SHORT)
-            if URLMap.get(short):
-                raise ValueError(SHORT_EXISTS)
-        else:
+    def create(original, short=None, validate=True):
+        if validate and len(original) > MAX_LENGTH_LINK:
+            raise ValueError(ORIGINAL_LINK_TOO_LONG)
+        if not short:
             short = URLMap.generate_unique_short()
+        else:
+            if validate:
+                if (
+                    len(short) > MAX_LENGTH_SHORT
+                    or short in FORBIDDEN_SHORT_NAMES
+                    or not re.fullmatch(REGEX_PATTERN_SHORT, short)
+                ):
+                    raise ValueError(INVALID_SHORT)
+                if URLMap.get(short):
+                    raise ValueError(SHORT_EXISTS)
 
         url_map = URLMap(original=original, short=short)
         db.session.add(url_map)
