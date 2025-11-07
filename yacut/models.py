@@ -1,15 +1,18 @@
 from datetime import datetime, timezone
 import random
+import re
 
 from flask import url_for
 
 from yacut import db
 from .constants import (
     ALLOWED_SHORT_CHARS,
+    FORBIDDEN_SHORT_NAMES,
     MAX_LENGTH_LINK,
     MAX_LENGTH_SHORT,
     MAX_LENGTH_SHORT_AUTO,
     MAX_ATTEMPTS_GENERATION_SHORT,
+    REGEX_PATTERN_SHORT,
     REDIRECT_VIEW_NAME
 )
 
@@ -41,7 +44,16 @@ class URLMap(db.Model):
 
     @staticmethod
     def create(original, short=None):
-        if short is None:
+        if short:
+            if (
+                len(short) > MAX_LENGTH_SHORT
+                or short in FORBIDDEN_SHORT_NAMES
+                or not re.fullmatch(REGEX_PATTERN_SHORT, short)
+            ):
+                raise ValueError(INVALID_SHORT)
+            if URLMap.get(short):
+                raise ValueError(SHORT_EXISTS)
+        else:
             short = URLMap.generate_unique_short()
 
         url_map = URLMap(original=original, short=short)
